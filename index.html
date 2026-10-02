@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CheerpJ Swing Demo</title>
+    <!-- Load CheerpJ 3.0 runtime loader -->
+    <script src="https://cjrtnc.leaningtech.com/3.0/cj3loader.js"></script>
+</head>
+<body>
+    <h1>Java Swing Application</h1>
+
+    <!-- Display container for Swing UI -->
+    <div id="container" style="width: 500px; height: 300px; border: 1px solid #ccc;"></div>
+
+    <script>
+        async function loadApp() {
+            // 1. Initialize the CheerpJ runtime
+            await cheerpjInit();
+
+            // 2. Attach CheerpJ display to the HTML div element
+            cheerpjCreateDisplay(500, 300, document.getElementById("container"));
+
+            // -------------------------------------------------------------
+            // OPTION A: Run directly from a compiled .class file
+            // -------------------------------------------------------------
+            // Arguments: Fully qualified class name, Virtual Classpath
+            // "/app/" points to the root directory where index.html is hosted.
+            await cheerpjRunMain("BouncingBall", "/app/");
+
+            // -------------------------------------------------------------
+            // OPTION B: Run from an executable .jar file
+            // -------------------------------------------------------------
+            // Uncomment the line below to run via app.jar instead of Option A
+            // await cheerpjRunJar("/app/app.jar");
+        }
+
+        loadApp();
+    </script>
+</body>
+</html>
