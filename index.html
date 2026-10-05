@@ -16,7 +16,8 @@
 
         /* Container is hidden by default */
         #container {
-            display: none; 
+            opacity: 0;
+            transition: opacity 0.5s ease;
             width: 500px; 
             height: 400px;
         }
@@ -36,7 +37,7 @@
             const loading = document.getElementById("loading");
 
             // 1. Initialize the CheerpJ runtime
-            await cheerpjInit();
+            await cheerpjInit({status: "none"});
             // Extract repository path from the current URL
             let path = window.location.pathname.replace(/index\.html$/, '');
             if (!path.endsWith('/')) path += '/';
@@ -57,13 +58,19 @@
             // 4. Start the Java application
             const appPromise = cheerpjRunMain("BouncingBall", `/app${path}`);
 
-            // 5. Hide the loading message and reveal the Java container
-            loading.style.display = "none";
-            container.style.display = "block";
+            // Small delay to allow the JVM/Swing EDT to render the first frame
+            await new Promise(resolve => setTimeout(resolve, 1500));
 
-            // 6. Keep app running
+            // Fade out loader, fade in Java canvas
+            loading.style.opacity = "0";
+            container.style.opacity = "1";
+
+            // Remove loading overlay from DOM after fade-out completes
+            // setTimeout(() => {
+            //     loading.style.display = "none";
+            // }, 500);
+
             await appPromise;
-
             // -------------------------------------------------------------
             // OPTION B: Run from an executable .jar file
             // -------------------------------------------------------------
