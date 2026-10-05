@@ -16,9 +16,12 @@
         async function loadApp() {
             // 1. Initialize the CheerpJ runtime
             await cheerpjInit();
+            // Extract repository path from the current URL
+            let path = window.location.pathname.replace(/index\.html$/, '');
+            if (!path.endsWith('/')) path += '/';
 
             // 2. Attach CheerpJ display to the HTML div element
-            cheerpjCreateDisplay(500, 300, document.getElementById("container"));
+            cheerpjCreateDisplay(500, 400, document.getElementById("container"));
 
             // -------------------------------------------------------------
             // OPTION A: Run directly from a compiled .class file
@@ -26,19 +29,22 @@
             // Arguments: Fully qualified class name, Virtual Classpath
             // "/app/" points to the root directory where index.html is hosted.
             //await cheerpjRunMain("BouncingBall", "/app/");
+            // cheerpjRunMain arguments:
+            // 1. Fully qualified Main Class name ("BouncingBall")
+            // 2. Virtual Classpath directory ("/app/repo-name/")
+            await cheerpjRunMain("BouncingBall", `/app${path}`);
 
             // -------------------------------------------------------------
             // OPTION B: Run from an executable .jar file
             // -------------------------------------------------------------
             // Uncomment the line below to run via app.jar instead of Option A
 
-            // Extract repository path from the current URL
-            let path = window.location.pathname.replace(/index\.html$/, '');
-            if (!path.endsWith('/')) path += '/';
+
 
             // Resolves to /app/app.jar on localhost 
             // Resolves to /app/your-repo-name/app.jar on GitHub Pages
-            await cheerpjRunJar(`/app${path}app.jar`);
+            //await cheerpjRunJar(`/app/app.jar`);
+            //await cheerpjRunJar(`/app${path}app.jar`);
         }
 
         loadApp();
