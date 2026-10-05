@@ -15,6 +15,9 @@
             padding-top: 30px;
             margin: 0;
         }
+        .container{
+            display:flex;
+        }
 
         .controls {
             margin-bottom: 20px;
@@ -34,7 +37,9 @@
             opacity: 0.5;
             cursor: not-allowed;
         }
-
+        #app-container,#code{
+            flex:1;
+        }
         #app-wrapper {
             position: relative;
             width: 500px;
@@ -75,6 +80,9 @@
             overflow-y: auto;
             white-space: pre-wrap;
         }
+        #code-block{
+            
+        }
     </style>
 </head>
 <body>
@@ -86,28 +94,49 @@
             <option value="BouncingBall">Bouncing Ball Game</option>
             <option value="HelloWorldSwing">Hello World (Swing)</option>
             <option value="HelloWorldConsole">Hello World (Console)</option>
+            <option value="FibonacciConsole">Fibonacci (Console)</option>
         </select>
     </div>
-
-    <div id="app-container">
-        <div id="app-wrapper">
-            <div id="loading">Initializing CheerpJ JVM...</div>
-            <div id="display-area"></div>
+    <div class="container">
+        <div id="app-container">
+            <div id="app-wrapper">
+                <div id="loading">Initializing CheerpJ JVM...</div>
+                <div id="display-area"></div>
+            </div>
+            <!-- Replace or place alongside your canvas wrapper -->
+            <pre id="terminal"></pre>
         </div>
-        <!-- Replace or place alongside your canvas wrapper -->
-        <pre id="terminal"></pre>
+        <div>
+            <pre><code id="code-block" >Loading source code...</code></pre>
+        </div>
     </div>
-
     <script>
         let isJvmReady = false;
 
         // Base classpath directory handler (supports Localhost & GitHub Pages)
         function getClasspath() {
+            return `/app${getFetchPath()}`;
+        }
+        function getFetchPath() {
             let path = window.location.pathname.replace(/index\.html$/, '');
             if (!path.endsWith('/')) path += '/';
-            return `/app${path}`;
+            return path;
         }
+        // Fetch and render .java source file text
+        async function loadSourceCode(className) {
+            const codeBlock = document.getElementById("code-block");
+            codeBlock.textContent = "Loading source code...";
 
+            try {
+                const response = await fetch(`${getFetchPath()}${className}.java`);
+                if (!response.ok) throw new Error("File not found");
+                
+                const sourceText = await response.text();
+                codeBlock.textContent = sourceText;
+            } catch (err) {
+                codeBlock.textContent = `// Unable to load ${className}.java\n// Ensure the .java file is committed to your repository.`;
+            }
+        }
         // Initialize CheerpJ runtime once
         async function initJvm() {
             const terminal = document.getElementById("terminal");
@@ -120,9 +149,8 @@
                 // Append printed text to the HTML terminal element
                 const message = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(" ");
                 if(!message.includes("CheerpJ")){
-                    terminal.textContent += message + "\n";
+                    terminal.textContent += message ;
                 }
-                
                 
                 // Auto-scroll to the bottom as new lines arrive
                 terminal.scrollTop = terminal.scrollHeight;
@@ -147,6 +175,7 @@
             
             terminal.style.display = consoleApp ? "block":"none";
             displayWrapper.style.display = consoleApp ? "none":"block";
+            displayArea.style.opacity = "0";
 
             // Prevent rapid selection switching during load
             selector.disabled = true;
@@ -154,6 +183,9 @@
             // Show loading screen
             loading.style.display = "flex";
             loading.style.opacity = "1";
+
+            // 1. Fetch source code in parallel
+            loadSourceCode(className);
 
             // 1. Clear previous Java display container
             displayArea.innerHTML = "";
@@ -177,7 +209,7 @@
 
             // Hide loader and unlock dropdown
             loading.style.opacity = "0";
-            setTimeout(() => { loading.style.display = "none"; }, 300);
+            setTimeout(() => { loading.style.display = "none";displayArea.style.opacity = "1"; }, 1000);
             selector.disabled = false;
 
             await appPromise;
