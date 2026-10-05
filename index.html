@@ -2,89 +2,186 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>CheerpJ Swing Demo</title>
-    <!-- Load CheerpJ 3.0 runtime loader -->
+    <title>Java App Launcher (.class)</title>
     <script src="https://cjrtnc.leaningtech.com/3.0/cj3loader.js"></script>
     <style>
-        /* Loading indicator styling */
-        #loading {
-            font-family: sans-serif;
-            font-size: 18px;
-            color: #555;
-            padding: 20px;
+        body {
+            background-color: #1a1a1a;
+            color: #ffffff;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 30px;
+            margin: 0;
         }
 
-        /* Container is hidden by default */
-        #container {
-            opacity: 0;
-            transition: opacity 0.5s ease;
-            width: 500px; 
+        .controls {
+            margin-bottom: 20px;
+        }
+
+        select {
+            padding: 8px 16px;
+            font-size: 16px;
+            border-radius: 6px;
+            background-color: #2a2a2a;
+            color: #ffffff;
+            border: 1px solid #444;
+            cursor: pointer;
+        }
+
+        select:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        #app-wrapper {
+            position: relative;
+            width: 500px;
             height: 400px;
+            background-color: #000;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+
+        #loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #121212;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            z-index: 10;
+            transition: opacity 0.3s ease;
+        }
+
+        #display-area {
+            width: 100%;
+            height: 100%;
+        }
+        #terminal {
+            background-color: #000000;
+            color: #00ff00; /* Classic green terminal text */
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+            padding: 15px;
+            width: 500px;
+            height: 400px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            white-space: pre-wrap;
         }
     </style>
 </head>
 <body>
-    <h1>Java Swing Application</h1>
-    <!-- Shown while Java & WebAssembly compile/load -->
-    <div id="loading">Loading Java Runtime...</div>
 
-    <!-- Display container for Swing UI -->
-    <div id="container" style="width: 500px; height: 300px; border: 1px solid #ccc;"></div>
+    <div class="controls">
+        <label for="appSelect">Select Application: </label>
+        <!-- Dropdown values match the main Java class names -->
+        <select id="appSelect" onchange="switchApp(this.value)">
+            <option value="BouncingBall">Bouncing Ball Game</option>
+            <option value="HelloWorldSwing">Hello World (Swing)</option>
+            <option value="HelloWorldConsole">Text Editor</option>
+        </select>
+    </div>
+
+    <div id="app-container">
+        <div id="app-wrapper">
+            <div id="loading">Initializing CheerpJ JVM...</div>
+            <div id="display-area"></div>
+        </div>
+        <!-- Replace or place alongside your canvas wrapper -->
+        <pre id="terminal"></pre>
+    </div>
 
     <script>
-        async function loadApp() {
-            const container = document.getElementById("container");
-            const loading = document.getElementById("loading");
+        let isJvmReady = false;
 
-            // 1. Initialize the CheerpJ runtime
-            await cheerpjInit({status: "none"});
-            // Extract repository path from the current URL
+        // Base classpath directory handler (supports Localhost & GitHub Pages)
+        function getClasspath() {
             let path = window.location.pathname.replace(/index\.html$/, '');
             if (!path.endsWith('/')) path += '/';
-
-            // 2. Attach CheerpJ display to the HTML div element
-            cheerpjCreateDisplay(500, 400, container);
-
-            // -------------------------------------------------------------
-            // OPTION A: Run directly from a compiled .class file
-            // -------------------------------------------------------------
-            // Arguments: Fully qualified class name, Virtual Classpath
-            // "/app/" points to the root directory where index.html is hosted.
-            //await cheerpjRunMain("BouncingBall", "/app/");
-            // cheerpjRunMain arguments:
-            // 1. Fully qualified Main Class name ("BouncingBall")
-            // 2. Virtual Classpath directory ("/app/repo-name/")
-            //await cheerpjRunMain("BouncingBall", `/app${path}`);
-            // 4. Start the Java application
-            const appPromise = cheerpjRunMain("BouncingBall", `/app${path}`);
-
-            // Small delay to allow the JVM/Swing EDT to render the first frame
-            await new Promise(resolve => setTimeout(resolve, 1500));
-
-            // Fade out loader, fade in Java canvas
-            loading.style.opacity = "0";
-            container.style.opacity = "1";
-
-            // Remove loading overlay from DOM after fade-out completes
-            // setTimeout(() => {
-            //     loading.style.display = "none";
-            // }, 500);
-
-            await appPromise;
-            // -------------------------------------------------------------
-            // OPTION B: Run from an executable .jar file
-            // -------------------------------------------------------------
-            // Uncomment the line below to run via app.jar instead of Option A
-
-
-
-            // Resolves to /app/app.jar on localhost 
-            // Resolves to /app/your-repo-name/app.jar on GitHub Pages
-            //await cheerpjRunJar(`/app/app.jar`);
-            //await cheerpjRunJar(`/app${path}app.jar`);
+            return `/app${path}`;
         }
 
-        loadApp();
+        // Initialize CheerpJ runtime once
+        async function initJvm() {
+            const terminal = document.getElementById("terminal");
+            const originalLog = console.log;
+
+            // Intercept all console output (including System.out.println)
+            console.log = function (...args) {
+                originalLog.apply(console, args); // Keeps logging to DevTools console
+                
+                // Append printed text to the HTML terminal element
+                const message = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(" ");
+                terminal.textContent += message + "\n";
+                
+                // Auto-scroll to the bottom as new lines arrive
+                terminal.scrollTop = terminal.scrollHeight;
+            };
+            await cheerpjInit({ status: "none" });
+            isJvmReady = true;
+
+            // Load initial selected option
+            const selector = document.getElementById("appSelect");
+            switchApp(selector.value);
+        }
+
+        async function switchApp(className) {
+            if (!isJvmReady) return;
+
+
+            const selector = document.getElementById("appSelect");
+            const loading = document.getElementById("loading");
+            const displayArea = document.getElementById("display-area");
+            const displayWrapper = document.getElementById("app-wrapper");
+            const consoleApp = className.includes("Console");
+            
+            terminal.style.display = consoleApp ? "block":"none";
+            displayWrapper.style.display = consoleApp ? "none":"block";
+
+            // Prevent rapid selection switching during load
+            selector.disabled = true;
+
+            // Show loading screen
+            loading.style.display = "flex";
+            loading.style.opacity = "1";
+
+            // 1. Clear previous Java display container
+            displayArea.innerHTML = "";
+
+            // 2. Create fresh DOM element for new canvas
+            const container = document.createElement("div");
+            container.style.width = "500px";
+            container.style.height = "400px";
+            displayArea.appendChild(container);
+
+            // 3. Attach CheerpJ display
+            cheerpjCreateDisplay(500, 400, container);
+
+            // 4. Execute class via cheerpjRunMain
+            // Arg 1: Main Class Name
+            // Arg 2: Virtual Classpath Directory (/app/your-repo/)
+            const appPromise = cheerpjRunMain(className, getClasspath());
+
+            // 5. Rendering buffer delay
+            await new Promise(r => setTimeout(r, 1200));
+
+            // Hide loader and unlock dropdown
+            loading.style.opacity = "0";
+            setTimeout(() => { loading.style.display = "none"; }, 300);
+            selector.disabled = false;
+
+            await appPromise;
+        }
+
+        // Start initialization on page load
+        initJvm();
     </script>
 </body>
 </html>
